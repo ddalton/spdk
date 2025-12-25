@@ -494,7 +494,10 @@ ublk_ctrl_cmd_submit(struct spdk_ublk_dev *ublk, uint32_t cmd_op)
 		cmd->len = sizeof(ublk->dev_params);
 		break;
 	case UBLK_CMD_START_DEV:
-		cmd->data[0] = getpid();
+		/* Kernel 6.14+ validates that this TID matches the thread
+		 * that opened /dev/ublkcN. Use gettid() instead of getpid()
+		 * to ensure the correct thread ID is passed. */
+		cmd->data[0] = gettid();
 		break;
 	case UBLK_CMD_STOP_DEV:
 		break;
@@ -503,7 +506,7 @@ ublk_ctrl_cmd_submit(struct spdk_ublk_dev *ublk, uint32_t cmd_op)
 	case UBLK_CMD_START_USER_RECOVERY:
 		break;
 	case UBLK_CMD_END_USER_RECOVERY:
-		cmd->data[0] = getpid();
+		cmd->data[0] = gettid();
 		break;
 	default:
 		SPDK_ERRLOG("No match cmd operation,cmd_op = %d\n", cmd_op);
@@ -1694,7 +1697,7 @@ ublk_dev_info_init(struct spdk_ublk_dev *ublk)
 		.nr_hw_queues = ublk->num_queues,
 		.dev_id = ublk->ublk_id,
 		.max_io_buf_bytes = UBLK_IO_MAX_BYTES,
-		.ublksrv_pid = getpid(),
+		.ublksrv_pid = gettid(),
 		.flags = UBLK_F_URING_CMD_COMP_IN_TASK,
 	};
 
@@ -2032,7 +2035,7 @@ ublk_ctrl_start_recovery(struct spdk_ublk_dev *ublk)
 
 	ublk->num_queues = ublk->dev_info.nr_hw_queues;
 	ublk->queue_depth = ublk->dev_info.queue_depth;
-	ublk->dev_info.ublksrv_pid = getpid();
+	ublk->dev_info.ublksrv_pid = gettid();
 
 	SPDK_DEBUGLOG(ublk, "Recovering ublk %d, num queues %u, queue depth %u, flags 0x%llx\n",
 		      ublk->ublk_id,
