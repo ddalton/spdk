@@ -292,6 +292,8 @@ ublk_ctrl_cmd_error(struct spdk_ublk_dev *ublk, int32_t res)
 	assert(res != 0);
 
 	SPDK_ERRLOG("ctrlr cmd %s failed, %s\n", ublk_op_name[ublk->current_cmd_op], spdk_strerror(-res));
+	SPDK_ERRLOG("[UBLK_DEBUG] ctrlr cmd %s failed with res=%d, errno=%d (%s), ublk_id=%u\n",
+	            ublk_op_name[ublk->current_cmd_op], res, -res, spdk_strerror(-res), ublk->ublk_id);
 	if (ublk->ctrl_cb) {
 		ublk->ctrl_cb(ublk->cb_arg, res);
 		ublk->ctrl_cb = NULL;
@@ -497,6 +499,11 @@ ublk_ctrl_cmd_submit(struct spdk_ublk_dev *ublk, uint32_t cmd_op)
 		/* Kernel 6.14+ validates that this TID matches the thread
 		 * that opened /dev/ublkcN. Use gettid() instead of getpid()
 		 * to ensure the correct thread ID is passed. */
+		SPDK_NOTICELOG("[UBLK_DEBUG] START_DEV: ublk_id=%u, TID=%d (gettid), PID=%d (getpid), dev_id=%u, flags=0x%llx\n",
+		               ublk->ublk_id, gettid(), getpid(), ublk->dev_info.dev_id,
+		               (__u64)ublk->dev_info.flags);
+		SPDK_NOTICELOG("[UBLK_DEBUG] START_DEV: nr_hw_queues=%u, queue_depth=%u, state=%u, ublksrv_pid=%d\n",
+		               ublk->dev_info.nr_hw_queues, ublk->dev_info.queue_depth, ublk->dev_info.state, ublk->dev_info.ublksrv_pid);
 		cmd->data[0] = gettid();
 		break;
 	case UBLK_CMD_STOP_DEV:
@@ -506,6 +513,11 @@ ublk_ctrl_cmd_submit(struct spdk_ublk_dev *ublk, uint32_t cmd_op)
 	case UBLK_CMD_START_USER_RECOVERY:
 		break;
 	case UBLK_CMD_END_USER_RECOVERY:
+		SPDK_NOTICELOG("[UBLK_DEBUG] START_DEV: ublk_id=%u, TID=%d (gettid), PID=%d (getpid), dev_id=%u, flags=0x%llx\n",
+		               ublk->ublk_id, gettid(), getpid(), ublk->dev_info.dev_id,
+		               (__u64)ublk->dev_info.flags);
+		SPDK_NOTICELOG("[UBLK_DEBUG] START_DEV: nr_hw_queues=%u, queue_depth=%u, state=%u, ublksrv_pid=%d\n",
+		               ublk->dev_info.nr_hw_queues, ublk->dev_info.queue_depth, ublk->dev_info.state, ublk->dev_info.ublksrv_pid);
 		cmd->data[0] = gettid();
 		break;
 	default:
