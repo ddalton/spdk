@@ -365,7 +365,9 @@ ublk_ctrl_process_cqe(struct io_uring_cqe *cqe)
 		}
 		break;
 	case UBLK_CMD_SET_PARAMS:
-		rc = ublk_start_dev(ublk, false);
+		/* Get device info to populate dev_info.state before START_DEV */
+		ublk->is_recovering = false;  /* Mark as normal startup, not recovery */
+		rc = ublk_ctrl_cmd_submit(ublk, UBLK_CMD_GET_DEV_INFO);
 		if (rc < 0) {
 			ublk_delete_dev(ublk);
 			goto cb_done;
@@ -391,8 +393,20 @@ ublk_ctrl_process_cqe(struct io_uring_cqe *cqe)
 		}
 
 		UBLK_DEBUGLOG(ublk, "Ublk %u device state %u\n", ublk->ublk_id, ublk->dev_info.state);
+		
+		/* Normal startup flow (after SET_PARAMS) */
+			if (!ublk->is_recovering) {
+				SPDK_NOTICELOG("[UBLK_FIX] Device %u state=%u, starting device\n", ublk->ublk_id, ublk->dev_info.state);
+			rc = ublk_start_dev(ublk, false);
+			if (rc < 0) {
+				ublk_delete_dev(ublk);
+				goto cb_done;
+			}
+			break;
+		}
 		/* kernel ublk_drv driver returns -EBUSY if device state isn't UBLK_S_DEV_QUIESCED */
-		if ((ublk->dev_info.state != UBLK_S_DEV_QUIESCED) && (ublk->retry_count < 3)) {
+		/* Recovery flow: kernel returns -EBUSY if state isn't UBLK_S_DEV_QUIESCED */
+		else if ((ublk->dev_info.state != UBLK_S_DEV_QUIESCED) && (ublk->retry_count < 3)) {
 			ublk->retry_count++;
 			ublk->retry_poller = SPDK_POLLER_REGISTER(_ublk_get_device_state_retry, ublk, 1000000);
 			return;
