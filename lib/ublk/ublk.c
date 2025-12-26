@@ -2016,12 +2016,14 @@ ublk_start_dev(struct spdk_ublk_dev *ublk, bool is_recovering)
 	char			buf[64];
 
 	snprintf(buf, 64, "%s%d", UBLK_BLK_CDEV, ublk->ublk_id);
+	SPDK_NOTICELOG("[UBLK_DEBUG] Opening device %s\n", buf);
 	ublk->cdev_fd = open(buf, O_RDWR);
 	if (ublk->cdev_fd < 0) {
 		rc = ublk->cdev_fd;
 		SPDK_ERRLOG("can't open %s, rc %d\n", buf, rc);
 		return rc;
 	}
+	SPDK_NOTICELOG("[UBLK_DEBUG] Successfully opened %s, fd=%d\n", buf, ublk->cdev_fd);
 
 	for (q_id = 0; q_id < ublk->num_queues; q_id++) {
 		rc = ublk_dev_queue_init(&ublk->queues[q_id]);
